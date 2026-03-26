@@ -16,17 +16,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES["file"])) {
     $fileSize = $file["size"];
     $error = $file["error"];
 
-    // Taille max : 5MB
-    $maxSize = 5 * 1024 * 1024;
-
-    // Extensions autorisées
+    $maxSize = 5 * 1024 * 1024; // 5MB
     $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx', 'txt', 'zip'];
-
     $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
 
+    // Vérifie erreurs PHP upload
     if ($error !== 0) {
-        header("Location: dashboard.php?error=upload");
-        exit();
+        die("Erreur upload PHP : " . $error);
     }
 
     if ($fileSize > $maxSize) {
@@ -39,15 +35,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES["file"])) {
         exit();
     }
 
-    $storedName = uniqid() . "." . $extension;
-    $uploadPath = "uploads/" . $storedName;
+    // Vérifie que le dossier uploads existe
+    $uploadDir = __DIR__ . "/uploads/";
 
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0777, true);
+    }
+
+    $storedName = uniqid() . "." . $extension;
+    $uploadPath = $uploadDir . $storedName;
+
+    // Déplacement du fichier
     if (move_uploaded_file($tmpName, $uploadPath)) {
         $stmt = $pdo->prepare("INSERT INTO files (user_id, original_name, stored_name, file_size) VALUES (?, ?, ?, ?)");
         $stmt->execute([$user_id, $originalName, $storedName, $fileSize]);
 
         header("Location: dashboard.php?success=1");
         exit();
+    } else {
+        die("Impossible de déplacer le fichier dans /uploads/");
     }
 }
 
